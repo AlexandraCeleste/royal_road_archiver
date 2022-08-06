@@ -1,47 +1,131 @@
 #![allow(non_snake_case)] // Disable the snake case warning.
+#![allow(dead_code)] // Disable warnings for unused code.
+#![allow(unused_imports)] // Disable warnings for unused imports.
 
 //use std::env;
 use scraper::{Html, Selector};
 use reqwest::blocking;
 
-use printpdf::*;
-use std::fs::File;
-use std::io::BufWriter;
+use epub_builder::EpubBuilder;
+use epub_builder::Result;
+use epub_builder::ZipLibrary;
+use epub_builder::EpubContent;
+use epub_builder::ReferenceType;
+use epub_builder::TocElement;
 
-struct Chapter {
+use chrono::prelude::*;
+
+use std::io;
+use std::fs::File;
+use std::io::Write;
+
+
+struct Book { // The book struct includes information about the book ready to be bundled into the Epub.
+    Title: String,
+    Author: String,
+    CoverArt: String,
+    DateCreated: DateTime<Utc>,
+    Chapters: Vec<Chapter>,
+    BookUrl: String,
+}
+
+impl Book {
+    fn new(document: &Html, url: String ) -> Book {
+        let mut title = String::new();
+        let mut author = String::new();
+        let mut imageUrl = String::new();
+
+        let selector = Selector::parse("h1").unwrap();
+        for element in document.select(&selector) {
+            match element.value().attr("property") {
+                None => continue,
+                Some(x) => {
+                    if x == "name" { title = element.inner_html(); break;}
+                }
+            }
+        }
+
+        let selector = Selector::parse("span").unwrap();
+        for element in document.select(&selector) {
+            match element.value().attr("property") {
+                None => continue,
+                Some(x) => { 
+                    if x == "name" {
+                        let fragment = Html::parse_fragment(element.inner_html().as_str());
+                        let selector = Selector::parse("a").unwrap();
+                        for a in fragment.select(&selector) {
+                            author = a.inner_html(); break;
+                        }
+                    }
+                }
+            }
+        }
+
+        let selector = Selector::parse("img").unwrap();
+        for element in document.select(&selector) {
+            match element.value().attr("alt") {
+                None => continue,
+                Some(x) => {
+                    if x == title { 
+                        imageUrl = element.value().attr("src").unwrap().to_owned();
+                        break; 
+                    }
+                }
+            }
+        }
+
+        return Book { 
+            Title: title,
+            Author: author,
+            CoverArt: imageUrl,
+            DateCreated: Utc::now(),
+            Chapters: get_chapters(&document), 
+            BookUrl: url.to_owned(),
+        };
+    }
+
+    fn populate_chapter_content(&mut self) {
+        for chapter in self.Chapters.iter_mut() {
+            chapter.get_chapter_content();
+        }
+    }
+}
+
+struct Chapter { // The chapter struct holds the chapters name, Url, and raw content.
     Name: String,
     Url: String,
     Content: String,
+}
+
+impl Chapter {
+    fn get_chapter_content(&mut self) {
+        let document = get_htmldocument(&self.Url);
+    
+        let selector = Selector::parse("div").unwrap();
+    
+        for content in document.select(&selector) {
+            match content.value().classes().into_iter().find(|&x| x == "chapter-content" ) { // match to find only the div that contains the class "chapter-content".
+                None => continue,
+                Some(_) => { self.Content = content.inner_html(); break; }
+            }
+        }
+    }
 }
 
 fn main() {
     //let args: Vec<String> = env::args().collect();
     //let Url = args[1].to_owned();
 
-    /*let Url = String::from("https://www.royalroad.com/fiction/28023/katalepsis");
+    let Url = String::from("https://www.royalroad.com/fiction/28023/katalepsis");
 
-    let mut chapters = get_chapters(Url);
+    let mut book:Book = Book::new(&get_htmldocument(&Url), Url);
+    book.populate_chapter_content();
 
-    for i in 0..chapters.len() {
-        chapters[i].Content = get_chapter_content(&chapters[i].Url);
-        println!();
-    }*/
-
-    makepdf();
+    make_epub();
 }
 
-fn makepdf() {
-    let (doc, page1, layer1) = 
-        PdfDocument::new("PDF-Document-Title", 
-        Mm(210.0), // A4 = 210Mm * 297Mm
-        Mm(297.0), 
-        "Layer 1");
-
-    let current_layer = doc.get_page(page1).get_layer(layer1);
-
-    let text = "Hello, My name is raine";
-
-    //current_layer.use_text(text, font_size, x, y, font)
+fn make_epub() {
+    let builder = EpubBuilder::new(ZipLibrary::new().unwrap()).unwrap();
 }
 
 fn get_htmldocument(Url: &String) -> Html {
@@ -52,24 +136,8 @@ fn get_htmldocument(Url: &String) -> Html {
     return Html::parse_document(&rawhtml);
 }
 
-fn get_chapter_content(Url: &String) -> String {
-    let document = get_htmldocument(&Url);
-
-    let selector = Selector::parse("div").unwrap();
-
-    for content in document.select(&selector) {
-        match content.value().classes().into_iter().find(|&x| x == "chapter-content" ) { // match to find only the div that contains the class "chapter-content".
-            None => continue,
-            Some(_) => { return content.inner_html(); }
-        }
-    }
-    panic!("Couldn't find chaper-content");
-}
-
-fn get_chapters(Url: String) -> Vec<Chapter> {
-
+fn get_chapters(document: &Html) -> Vec<Chapter> {
     let mut chapters: Vec<Chapter> = Vec::new();
-    let document = get_htmldocument(&Url);
     
     let selector = Selector::parse("tbody").unwrap(); // Find <tbody><\tbody> in the html doc.
 
@@ -78,11 +146,8 @@ fn get_chapters(Url: String) -> Vec<Chapter> {
         let htmlfragment = Html::parse_fragment(&element.html()); // Make a new html fragment that contains only <tbody><\tbody> and it's children.
         let selector = Selector::parse("a, href").unwrap(); // Find just the chapter names and links from their a href <> tags.
 
-        let mut count:u32 = 0;
-        for link in htmlfragment.select(&selector) {
-            if count % 2 as u32 != 0 { count+=1; continue; } // If count is not even skip over iteration.
-            count +=1;
-
+        for link in htmlfragment.select(&selector).step_by(2) { // Step 2 in order to ignore repeating a href elements.
+  
             let chapter = Chapter { 
                 Name: get_chapter_name(link.inner_html()).replace("&nbsp;", " "), 
                 Url: [String::from("https://www.royalroad.com") , link.value().attr("href").unwrap().to_owned()].join(""),
@@ -91,7 +156,6 @@ fn get_chapters(Url: String) -> Vec<Chapter> {
             chapters.push(chapter);
         }
     }
-
     return chapters;
 }
 
@@ -105,6 +169,5 @@ fn get_chapter_name(input: String) -> String { // Function to remove random whit
 
         if is_name { output.push(char); }
     }
-
     return output.into_iter().collect();
 }
