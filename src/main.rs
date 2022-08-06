@@ -4,6 +4,10 @@
 use scraper::{Html, Selector};
 use reqwest::blocking;
 
+use printpdf::*;
+use std::fs::File;
+use std::io::BufWriter;
+
 struct Chapter {
     Name: String,
     Url: String,
@@ -14,14 +18,30 @@ fn main() {
     //let args: Vec<String> = env::args().collect();
     //let Url = args[1].to_owned();
 
-    let Url = String::from("https://www.royalroad.com/fiction/28023/katalepsis");
+    /*let Url = String::from("https://www.royalroad.com/fiction/28023/katalepsis");
 
     let mut chapters = get_chapters(Url);
 
     for i in 0..chapters.len() {
         chapters[i].Content = get_chapter_content(&chapters[i].Url);
         println!();
-    }
+    }*/
+
+    makepdf();
+}
+
+fn makepdf() {
+    let (doc, page1, layer1) = 
+        PdfDocument::new("PDF-Document-Title", 
+        Mm(210.0), // A4 = 210Mm * 297Mm
+        Mm(297.0), 
+        "Layer 1");
+
+    let current_layer = doc.get_page(page1).get_layer(layer1);
+
+    let text = "Hello, My name is raine";
+
+    //current_layer.use_text(text, font_size, x, y, font)
 }
 
 fn get_htmldocument(Url: &String) -> Html {
