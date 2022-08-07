@@ -2,6 +2,7 @@
 #![allow(dead_code)] // Disable warnings for unused code.
 #![allow(unused_imports)] // Disable warnings for unused imports.
 
+use image::DynamicImage;
 //use std::env;
 use scraper::{Html, Selector};
 use reqwest::blocking;
@@ -15,15 +16,21 @@ use epub_builder::TocElement;
 
 use chrono::prelude::*;
 
+use image;
+
+use std::collections::VecDeque;
+
+use std::fs;
 use std::io;
-use std::fs::File;
+use std::fs::{File, create_dir};
+use std::io::Read;
 use std::io::Write;
 
 
 struct Book { // The book struct includes information about the book ready to be bundled into the Epub.
     Title: String,
     Author: String,
-    CoverArt: String,
+    CoverArtUrl: String,
     DateCreated: DateTime<Utc>,
     Chapters: Vec<Chapter>,
     BookUrl: String,
@@ -77,7 +84,7 @@ impl Book {
         return Book { 
             Title: title,
             Author: author,
-            CoverArt: imageUrl,
+            CoverArtUrl: imageUrl,
             DateCreated: Utc::now(),
             Chapters: get_chapters(&document), 
             BookUrl: url.to_owned(),
@@ -87,7 +94,18 @@ impl Book {
     fn populate_chapter_content(&mut self) {
         for chapter in self.Chapters.iter_mut() {
             chapter.get_chapter_content();
+            break; // Remove this to get all chapter content !!!
         }
+    }
+
+    fn get_image(&self) -> DynamicImage {
+
+        let img_bytes = blocking::get(&self.CoverArtUrl).expect("Error getting image")
+        .bytes().expect("Error parsing image bytes."); // Download image bytes from the url with a blocking get request.
+
+        let image = image::load_from_memory(&img_bytes).expect("Image error"); // load image from memory.
+        
+        return image;
     }
 }
 
@@ -121,11 +139,53 @@ fn main() {
     let mut book:Book = Book::new(&get_htmldocument(&Url), Url);
     book.populate_chapter_content();
 
-    make_epub();
+    let epub = make_epub(&book);
+
+    let mut output = File::create("test.epub").expect("Unable to create 'file.epub'");
+
+    output.write(&epub).expect("Unable to write epub to 'file.epub'");
 }
 
-fn make_epub() {
-    let builder = EpubBuilder::new(ZipLibrary::new().unwrap()).unwrap();
+fn make_epub(book:&Book) -> Vec<u8> {
+    let mut builder = EpubBuilder::new(ZipLibrary::new().unwrap()).unwrap();
+
+    builder.metadata("title", &book.Title).expect("Error setting title.");
+    builder.metadata("author", &book.Author).expect("Error setting author.");
+    builder.metadata("lang", "en").expect("Error setting lang to en.");
+
+    builder.add_cover_image("cover.jpg", book.get_image().as_bytes() ,"image/jpg").expect("Unable to add cover image.");
+
+    let xml = generate_xml(&book.Chapters[0].Content);
+
+    builder.add_content(EpubContent::new("chapter_1.xhtml", xml.as_bytes())
+        .title("Chapter 1")
+        .reftype(ReferenceType::Text)).unwrap();
+
+    let mut epub: Vec<u8> = Vec::new();
+    builder.generate(&mut epub).unwrap();
+
+    return epub;
+}
+
+fn fix_xml(xml: &String) -> String {
+    
+    return String::new();
+}
+
+fn generate_xml(content: &String) -> String {
+    let head = r#"<?xml version ="1.0" encoding ="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body>"#;
+
+    let tail = r#"</body></xml>"#;
+
+    let mut output = String::new();
+
+    let fixed = fix_xml(content);
+
+    output.push_str(&head);
+    output.push_str(&fixed);
+    output.push_str(&tail);
+
+    return output;
 }
 
 fn get_htmldocument(Url: &String) -> Html {
