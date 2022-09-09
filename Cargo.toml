@@ -1,13 +1,15 @@
 [package]
-name = "RoyalRoad_Archiver"
+name = "royal_road_archiver"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+chrono = "0.4.20"
 reqwest = { version = "0.11", features = ["blocking"] }
 scraper = "0.13.0"
+html2md = "0.2.13"
+itertools = "0.10.3"
 epub-builder = "0.5.0"
-chrono = "0.4.20"
 image = "0.24.3"

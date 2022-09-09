@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'RoyalRoad_Archiver'",
+            "name": "Debug executable 'royal_road_archiver'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=RoyalRoad_Archiver",
-                    "--package=RoyalRoad_Archiver"
+                    "--bin=royal_road_archiver",
+                    "--package=royal_road_archiver"
                 ],
                 "filter": {
-                    "name": "RoyalRoad_Archiver",
+                    "name": "royal_road_archiver",
                     "kind": "bin"
                 }
             },
@@ -25,16 +25,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'RoyalRoad_Archiver'",
+            "name": "Debug unit tests in executable 'royal_road_archiver'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=RoyalRoad_Archiver",
-                    "--package=RoyalRoad_Archiver"
+                    "--bin=royal_road_archiver",
+                    "--package=royal_road_archiver"
                 ],
                 "filter": {
-                    "name": "RoyalRoad_Archiver",
+                    "name": "royal_road_archiver",
                     "kind": "bin"
                 }
             },
