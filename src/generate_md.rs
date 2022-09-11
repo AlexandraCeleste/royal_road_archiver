@@ -1,5 +1,4 @@
 use crate::{book::Book, http_get, html_query};
-
 use std::fs::File;
 use std::io::Write;
 use chrono::Datelike;

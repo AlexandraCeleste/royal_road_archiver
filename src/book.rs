@@ -1,6 +1,5 @@
 use chrono::prelude::{DateTime, Utc};
 use reqwest::blocking::Client;
-
 use crate::{http_get, html_query};
 
 pub struct Book {
@@ -8,7 +7,7 @@ pub struct Book {
 
     pub title: String,
     pub author: String,
-    pub description: String,
+    pub description: String, // <- Not used  due to description causing some epub readers to crash and burn.
     pub cover_img_url: String,
     pub date_archived: DateTime<Utc>,
     pub chapter_urls: Vec<String>
