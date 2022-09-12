@@ -8,11 +8,16 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 
-const HEAD: &str = r#"<html><body>"#;
-const TAIL: &str = r#"</body></html>"#;
+const HEAD: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">"#;
+const TAIL: &str = r#"</html>"#;
+const CSS: &str = "";
 
 pub fn generate(book: Book, ignore_images: bool) {
     let mut epub_build = EpubBuilder::new(ZipLibrary::new().unwrap()).unwrap();
+
+    epub_build.stylesheet(CSS.as_bytes()).unwrap();
 
     add_metadata(&book, &mut epub_build);
     add_cover(&book, &mut epub_build);
@@ -38,10 +43,10 @@ fn add_cover(book: &Book, epub_build: &mut EpubBuilder<ZipLibrary>) {
     epub_build.add_cover_image("cover.jpg", cover.as_slice(), "image/jpg").expect("Unable to add cover image.");
     // ^ as_slice needed due to vec<u8> not supporting std::io::read.
 
-    let body = format!(r#"<div style="text-align: center;"><h1>{}</h1>
+    let body = format!(r#"<head></head><body><div style="text-align: center;"><h1>{}</h1>
         <img src="{}"/>
         <h2>by: {}</h2>
-        <h3>Archived on: {}:{}:{}</h3></div>"#, 
+        <h3>Archived on: {}:{}:{}</h3></div></body>"#, 
         book.title,
         "cover.jpg",
         book.author,
@@ -62,18 +67,18 @@ fn add_chapters(book: &Book, epub_build: &mut EpubBuilder<ZipLibrary>, ignore_im
         let htmldoc = http_get::get_html_blocking(&url, &book.reqwest_client);
         let chapter_title = html_query::get_chapter_name(&htmldoc).replace("&nbsp;", " "); // Remeber to remove &nbsp; It causes some epub readers to crash.
         let mut chapter_content = html_query::get_chapter_content(&htmldoc);
-
+    
         match ignore_images {
             true => chapter_content = remove_img_tags(Html::parse_fragment(&chapter_content)),
             false => chapter_content = add_images(Html::parse_fragment(&chapter_content), &chapter_n, &book, epub_build, &mut used_srcs)
         }
-
+        chapter_content = format!("<head><title>{}</title></head><body><h1>{}</h1>{}</body>", chapter_title, chapter_title, chapter_content);
         chapter_content = chapter_content.replace("<br>", "<br/>"); // Remeber to close the br tags or epub readers WILL kill you.
         chapter_content = chapter_content.replace("&nbsp;", " "); // Remeber to remove &nbsp;
 
         let xhtml = format!("{}{}{}", HEAD, chapter_content, TAIL); // To whom it may concern, XHTML is a piece of garbage and if you had anything to do in designing the spec I will fucking kneecap you. Yours sincerely ~ Raine
 
-        epub_build.add_content(EpubContent::new(format!("{}.xhtml", chapter_title), xhtml.as_bytes())
+        epub_build.add_content(EpubContent::new(format!("chapter_{}.xhtml", chapter_n), xhtml.as_bytes())
             .title(chapter_title)
             .reftype(ReferenceType::Text)).expect("Unable to add cover");
         
@@ -102,7 +107,7 @@ fn add_images(fragment: Html, chapter_n: &u32, book: &Book, epub_build: &mut Epu
                     match image::guess_format(&img) {
                         Ok(format) => {
                             match format {
-                                image::ImageFormat::Jpeg => {path = format!("{}_{}.jpg", chapter_n, i); mime_type = "image/jpg".to_string(); },
+                                image::ImageFormat::Jpeg => {path = format!("{}_{}.jpeg", chapter_n, i); mime_type = "image/jpg".to_string(); },
                                 image::ImageFormat::Png => {path = format!("{}_{}.png", chapter_n, i); mime_type = "image/png".to_string(); },
                                 _ => { // If format isn't supported the image tag is removed and code skips to the next.
                                     println!("Image format: {:?} is not supported. Ask developer to support it.", format);

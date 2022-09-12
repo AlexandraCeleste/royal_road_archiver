@@ -7,7 +7,7 @@ mod http_get;
 use crate::book::Book;
 
 fn main() {
-    let url = "https://www.royalroad.com/fiction/14167/metaworld-chronicles";
+    let url = "https://www.royalroad.com/fiction/28023/katalepsis";
     let book:Book = Book::new(url);
     
     match 2 {
