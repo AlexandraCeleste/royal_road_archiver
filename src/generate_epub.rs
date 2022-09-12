@@ -86,7 +86,7 @@ fn add_images(fragment: Html, chapter_n: &u32, book: &Book, epub_build: &mut Epu
     let mut content = fragment.root_element().html();
 
     for i in 0..img_tags.0.len() {
-        let mut src = String::new();
+        let src: String;
         let mut width = String::new();
         let mut height = String::new();
 
