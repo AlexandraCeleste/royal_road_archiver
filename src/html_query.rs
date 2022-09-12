@@ -134,3 +134,31 @@ pub fn get_chapter_content (htmldoc: &Html) -> String {
     }
     panic!("Unable to get chapter content");
 }
+
+pub fn get_img_tags (htmldoc: &Html) -> (Vec<String>, Vec<Option<String>>, Vec<Option<i32>>, Vec<Option<i32>>) {
+    let mut img_tags: Vec<String> = vec![];
+    let mut sources: Vec<Option<String>> = vec![];
+    let mut widths: Vec<Option<i32>> = vec![];
+    let mut heights: Vec<Option<i32>> = vec![];
+
+    let selector = Selector::parse("img").unwrap();
+    for element in htmldoc.select(&selector) {
+        img_tags.push(element.html());
+
+        match element.value().attr("src") {
+            None => sources.push(None),
+            Some(x) => sources.push(Some(x.to_string()))
+        }
+
+        match element.value().attr("width") {
+            None => widths.push(None),
+            Some(i) => widths.push(Some(i.parse::<i32>().unwrap()))
+        }
+
+        match element.value().attr("height") {
+            None => heights.push(None),
+            Some(i) => heights.push(Some(i.parse::<i32>().unwrap()))
+        }
+    }
+    return (img_tags, sources, widths, heights);
+}
