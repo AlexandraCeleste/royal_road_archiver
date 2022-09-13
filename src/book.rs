@@ -2,7 +2,6 @@ use chrono::prelude::{DateTime, Utc};
 use reqwest::blocking::Client;
 use crate::{http_get, html_query};
 
-#[derive(Clone)]
 pub struct Book {
     pub reqwest_client: Client,
 
