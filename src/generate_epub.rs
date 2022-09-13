@@ -14,7 +14,7 @@ const HEAD: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 const TAIL: &str = r#"</html>"#;
 const CSS: &str = "";
 
-pub fn generate(book: Book, ignore_images: bool) {
+pub fn generate(book: &Book, noimages: bool) {
     let mut epub_build = EpubBuilder::new(ZipLibrary::new().unwrap()).unwrap();
 
     epub_build.stylesheet(CSS.as_bytes()).unwrap();
@@ -22,7 +22,7 @@ pub fn generate(book: Book, ignore_images: bool) {
     add_metadata(&book, &mut epub_build);
     add_cover(&book, &mut epub_build);
     epub_build.inline_toc(); // Add the Table of Contents after the cover page.
-    add_chapters(&book, &mut epub_build, ignore_images);
+    add_chapters(&book, &mut epub_build, noimages);
 
     let mut epub: Vec<u8> = vec![];
     epub_build.generate(&mut epub).expect("Unable to generate epub data");
@@ -59,7 +59,7 @@ fn add_cover(book: &Book, epub_build: &mut EpubBuilder<ZipLibrary>) {
     .reftype(ReferenceType::Cover)).expect("Unable to add cover");
 }
 
-fn add_chapters(book: &Book, epub_build: &mut EpubBuilder<ZipLibrary>, ignore_images: bool) {
+fn add_chapters(book: &Book, epub_build: &mut EpubBuilder<ZipLibrary>, noimages: bool) {
     let mut chapter_n: u32 = 0;
     let mut used_srcs: HashMap<String, String> = HashMap::new();
 
@@ -68,7 +68,7 @@ fn add_chapters(book: &Book, epub_build: &mut EpubBuilder<ZipLibrary>, ignore_im
         let chapter_title = html_query::get_chapter_name(&htmldoc).replace("&nbsp;", " "); // Remeber to remove &nbsp; It causes some epub readers to crash.
         let mut chapter_content = html_query::get_chapter_content(&htmldoc);
     
-        match ignore_images {
+        match noimages {
             true => chapter_content = remove_img_tags(Html::parse_fragment(&chapter_content)),
             false => chapter_content = add_images(Html::parse_fragment(&chapter_content), &chapter_n, &book, epub_build, &mut used_srcs)
         }
@@ -107,10 +107,10 @@ fn add_images(fragment: Html, chapter_n: &u32, book: &Book, epub_build: &mut Epu
                     match image::guess_format(&img) {
                         Ok(format) => {
                             match format {
-                                image::ImageFormat::Jpeg => {path = format!("{}_{}.jpeg", chapter_n, i); mime_type = "image/jpg".to_string(); },
-                                image::ImageFormat::Png => {path = format!("{}_{}.png", chapter_n, i); mime_type = "image/png".to_string(); },
+                                image::ImageFormat::Jpeg => {path = format!("id{}_{}.jpg", chapter_n, i); mime_type = "image/jpeg".to_string(); },
+                                image::ImageFormat::Png => {path = format!("id{}_{}.png", chapter_n, i); mime_type = "image/png".to_string(); },
                                 _ => { // If format isn't supported the image tag is removed and code skips to the next.
-                                    println!("Image format: {:?} is not supported. Ask developer to support it.", format);
+                                    println!("Image format: {:?} is not supported. Ask a developer to support it.", format);
                                     content = content.replacen(&img_tags.0[i], "", 1);
                                     continue;
                                 }

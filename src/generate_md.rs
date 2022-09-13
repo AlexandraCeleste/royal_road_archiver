@@ -4,14 +4,14 @@ use std::io::Write;
 use chrono::Datelike;
 use html2md::parse_html;
 
-pub fn generate(book: Book) {
+pub fn generate(book: &Book) {
     let path = [&book.title, ".md"].join("");
     let mut output = File::create(path).unwrap();
 
     let buf = [
-            book.title, 
-            "by:\n  ~".to_string(),
-            book.author].join(" ");
+            &book.title, 
+            "by:\n  ~",
+            &book.author].join(" ");
     output.write(buf.as_bytes()).unwrap(); // Write the title and author to the .md file.
 
     let buf = [
