@@ -74,6 +74,7 @@ fn add_chapters(book: &Book, epub_build: &mut EpubBuilder<ZipLibrary>, noimages:
         }
         chapter_content = format!("<head><title>{}</title></head><body><h1>{}</h1>{}</body>", chapter_title, chapter_title, chapter_content);
         chapter_content = chapter_content.replace("<br>", "<br/>"); // Remeber to close the br tags or epub readers WILL kill you.
+        chapter_content = chapter_content.replace("<hr>", "<hr/>");
         chapter_content = chapter_content.replace("&nbsp;", " "); // Remeber to remove &nbsp;
 
         let xhtml = format!("{}{}{}", HEAD, chapter_content, TAIL); // To whom it may concern, XHTML is a piece of garbage and if you had anything to do in designing the spec I will fucking kneecap you. Yours sincerely ~ Raine
